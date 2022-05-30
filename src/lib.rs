@@ -40,3 +40,83 @@ pub fn update_item(
         ContentType::Overwrite => Some(content.clone()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_update_item_overwrite() {
+        let i = json!({
+            "test": "value"
+        });
+        let t = ContentType::Overwrite;
+        let o = update_item(&t, &i, None);
+        assert_eq!(o, Some(i.clone()));
+
+        let o = update_item(
+            &t,
+            &i,
+            Some(json!({
+                "hello": "world"
+            })),
+        );
+        assert_eq!(o, Some(i.clone()));
+    }
+
+    #[test]
+    fn test_update_item_remove() {
+        let i = json!({
+            "remove": "me"
+        });
+        let t = ContentType::Remove;
+        let o = update_item(&t, &i, None);
+        assert_eq!(o, None);
+
+        let o = update_item(
+            &t,
+            &i,
+            Some(json!({
+                "a lot of content": "to be removed"
+            })),
+        );
+        assert_eq!(o, None);
+    }
+
+    #[test]
+    fn test_update_item_merge() {
+        let i = json!({
+            "remove": Value::Null,
+            "add": 12,
+            "nested": json!({
+                "remove": Value::Null,
+                "change": 24,
+            })
+        });
+        let t = ContentType::Merge;
+        let o = update_item(
+            &t,
+            &i,
+            Some(json!({
+                "remove": "bye",
+                "keep": "forever",
+                "nested": json!({
+                    "remove": json!({
+                        "content": "deleted",
+                    }),
+                    "change": 5,
+                })
+            })),
+        );
+        assert_eq!(
+            o,
+            Some(json!({
+                "keep": "forever",
+                "add": 12,
+                "nested": json!({
+                    "change": 24,
+                })
+            }))
+        )
+    }
+}
