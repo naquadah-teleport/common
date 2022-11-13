@@ -9,6 +9,19 @@ pub enum ContentType {
     Remove,
 }
 
+pub fn replace_string_field(value: &mut Value, from: &str, to: &str) {
+    if let Value::Object(value) = value {
+        for (_, v) in value {
+            replace_string_field(v, from, to);
+        }
+    } else if let Value::String(s) = value {
+        if let Some(offset) = s.find(from) {
+            s.replace_range(offset..(offset + from.len()), to);
+            *value = Value::String(s.to_string());
+        }
+    }
+}
+
 fn merge(into: &mut Value, from: Value) {
     if let Value::Object(into) = into {
         if let Value::Object(from) = from {
@@ -44,6 +57,30 @@ pub fn update_item(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_replace_string_field() {
+        let mut v = json!({
+            "nested": {
+                "field": "$value",
+                "object": {
+                    "$value": "$val",
+                }
+            }
+        });
+        replace_string_field(&mut v, "$val", "c");
+        assert_eq!(
+            v,
+            json!({
+                "nested": {
+                    "field": "cue",
+                    "object": {
+                        "$value": "c"
+                    }
+                },
+            })
+        );
+    }
 
     #[test]
     fn test_update_item_overwrite() {
